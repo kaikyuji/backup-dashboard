@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="../assets/css/padroes.css">
+    <link rel="stylesheet" href="../assets/css/menu.css">
+    <link rel="stylesheet" href="../assets/css/dashboard-suporte.css">
+    <script src="https://kit.fontawesome.com/7ac0278b37.js" crossorigin="anonymous"></script>
+</head>
+
+<body onload="criarGraficoSuporte()">
+    <nav class="MenuVertical">
+        <p class="TituloMenu">MENU</p>
+        <p id="Acesso">Nível</p>
+        <ul class="ListaMenu">
+            <li><a id="DashboardFuncionario" href="dashboard-funcionario.html">DashboardF</a></li>
+            <li><a id="DashboardSuporte" class="PaginaAtual" href="dashboard-suporte.html">DashboardS</a></li>
+            <li><a id="CadastroUsuarios" href="cadastro-funcionario.html">Usuários</a></li>
+            <li><a target="_blank"
+                    href="https://arcadium.atlassian.net/jira/servicedesk/projects/FK/queues/custom/1">Jira</a></li>
+        </ul>
+        <a href="../index.html"><span id="AzulBola"></span></a>
+        <a href="../index.html"><span id="RoxoBola"></span></a>
+    </nav>
+    <main style="gap: 4em !important;" class="Dashboard">
+        <span class="TituloBW">
+            <img src="../../assets/imagens/icones/usuario.png" alt="">
+            <h1>VISÃO GERAL DE SUPORTE TÉCNICO</h1>
+        </span>
+        <ul class="LegendaAlertas">
+            <li data-value="critico" class="pointer" style="background: var(--CriticoFundo);" onclick="mostrarIndicadores(this.getAttribute('data-value'))">
+                <i class="fa-solid fa-bell" style="color: var(--Critico)"></i>
+                <p>Crítico</p>
+            </li>
+            <li data-value="ruim" class="pointer" style="background: var(--RuimFundo);" onclick="mostrarIndicadores(this.getAttribute('data-value'))">
+                <i class="fa-solid fa-bell" style="color: var(--Ruim)"></i>
+                <p>Ruim</p>
+            </li>
+            <li data-value="medio" class="pointer"  style="background: var(--MedioFundo);" onclick="mostrarIndicadores(this.getAttribute('data-value'))">
+                <i class="fa-solid fa-bell" style="color: var(--Medio)"></i>
+                <p>Médio</p>
+            </li>
+            <li data-value="bom" class="pointer" style="background: var(--BomFundo);" onclick="mostrarIndicadores(this.getAttribute('data-value'))">
+                <i class="fa-solid fa-bell" style="color: var(--Bom)"></i>
+                <p>Bom</p>
+            </li>
+        </ul>
+        <div class="SecaoInformacoes">
+            <div class="selectBox">
+                <select>
+                </select>
+                <button onclick="mudarMaquina()">Atualizar</button>
+            </div>
+            <div class="Indicadores">
+                <ul class="LegendaAlertas">
+                    <li id="indicadortitulo" >Indicadores</li>
+                    <li id="indicadordisco">Disco:&nbsp;</li>
+                    <li id="indicadorram">RAM:&nbsp;</li>
+                    <li id="indicadorusb">USB:&nbsp;</li>
+                    <li id="indicadorcpu">CPU:&nbsp;</li>
+                </ul>
+            </div>
+        </div>
+        <div class="ContainerGraficos">
+            <div class="cards HardwareGrafico">
+                <p>Uso do disco atual</p>
+                <canvas id="disco"></canvas>
+            </div>
+            <div class="cards HardwareGrafico">
+                <p>Uso da RAM atual</p>
+                <canvas id="ram"></canvas>
+            </div>
+            <div class="cards HardwareGrafico">
+                <p>Quantidade atual de USBs conectados</p>
+                <canvas id="usb"></canvas>
+            </div>
+            <div class="cards HardwareGrafico">
+                <p>Uso do processador atual</p>
+                <canvas id="cpu"></canvas>
+            </div>
+            <div class="cards QtdHoras">
+                <p>Quantidade total de alertas críticos do mês</p>
+                <canvas id="alertasMes"></canvas>
+            </div>
+        </div>
+    </main>
+
+</body>
+
+</html>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="../assets/js/funcoes.js"></script>
+<script src="../assets/js/service.js"></script>
+<script>
+    let permissao = sessionStorage.getItem("PERMISSAO")
+    if (permissao != 1 && permissao != 2 && permissao != 4) window.location.href = "../index.html"
+    let entrouAgora = true;
+
+    function mudarMaquina() {
+        sessionStorage.ID_MAQUINA = document.querySelector(".selectBox select").value
+        location.reload();
+    }
+    puxarMaquinas();
+    async function mostrarIndicadores(elemento="critico") {
+        let alertas = {
+            critico: {
+                descricao:  `Este alerta representa um nível crítico de utilização. Quando atinge 100%, o alerta crítico é acionado, representa que há uma situação que requer atenção imediata. <br>Indicadores de cada componente apresentados abaixo:`,
+                percentual: 1.0,
+                class: "indicadorCritico",
+                classTitulo: "tituloCritico"
+            }, ruim: {
+                descricao: `O alerta ruim é acionado quando atinge 90% do nível crítico. Isso indica uma situação preocupante, embora não tão urgente quanto a de nível crítico. <br>Indicadores de cada componente apresentados abaixo:`,
+                percentual: 0.9,
+                class: "indicadorRuim",
+                classTitulo: "tituloRuim"
+            }, medio: {
+                descricao: `O alerta médio é acionado quando atinge 80% do nível crítico. Isso sinaliza uma situação que está se aproximando do nível ruim, mas ainda não atingiu um estado crítico. <br>Indicadores de cada componente apresentados abaixo:`,
+                percentual: 0.8,
+                class: "indicadorMedio",
+                classTitulo: "tituloMedio"
+            }, bom: {
+                descricao: `O alerta bom representa uma performance boa, uma máquina em estado estável, isso é identificado quando os valores estão abaixo dos indicadores médios.`,
+                percentual: 0.8,
+                class: "indicadorBom",
+                classTitulo: "tituloBom"
+            }
+        }
+        let indicadores = await puxarIndicadores();
+        document.querySelector(`#indicadortitulo`).classList = []
+        for (let item of Object.keys(indicadores[0])) {
+            document.querySelector(`#indicador${item}`).classList = []
+            if (item != "usb") {
+                if(elemento == 'bom'){
+                    document.querySelector(`#indicador${item}`).innerText = `${item.toUpperCase()} ≤ ${indicadores[0][item] * alertas[elemento].percentual}%`;
+                }else{
+                    document.querySelector(`#indicador${item}`).innerText = `${item.toUpperCase()} ≥ ${indicadores[0][item] * alertas[elemento].percentual}%`;
+                }
+                document.querySelector(`#indicador${item}`).classList.add(alertas[elemento].class)
+                document.querySelector(`#indicadortitulo`).classList.add(alertas[elemento].classTitulo)
+            } else {
+                if(elemento == 'bom'){
+                    document.querySelector(`#indicador${item}`).innerText = `${item.toUpperCase()} = ${indicadores[0][item]}`
+                    document.querySelector(`#indicador${item}`).classList.add("indicadorBom");
+                }else{
+                    document.querySelector(`#indicador${item}`).innerText = `${item.toUpperCase()} ≠ ${indicadores[0][item]}`
+                    document.querySelector(`#indicador${item}`).classList.add("indicadorCritico");
+
+                }
+            }
+        }
+    }
+    mostrarIndicadores();
+
+    async function criarGraficoSuporte() {
+        const disco = {
+            html: document.getElementById("disco"),
+            titulo: "Uso do disco",
+            titulosEixos: { x: "Horário", y: "Percentual de uso" },
+        };
+        const memoria = {
+            html: document.getElementById("ram"),
+            titulo: "Uso da memória",
+            titulosEixos: { x: "Horário", y: "Percentual de uso" },
+        };
+        const usb = {
+            html: document.getElementById("usb"),
+            titulo: "Quantidade de entradas USB conectadas",
+            titulosEixos: { x: "Horário", y: "Quantidade de USB conectados" },
+        };
+        const cpu = {
+            html: document.getElementById("cpu"),
+            titulo: "Uso do processador",
+            titulosEixos: { x: "Horário", y: "Percentual de uso" },
+        };
+        const hardwares = [disco, memoria, usb, cpu];
+        let listaGraficos = [];
+        let dados = await puxarDadosMaquina();
+
+        for (item of hardwares) {
+            let tipoGrafico = item == usb ? "bar" : "line";
+            let labels = dados.map((json) => json.hora);
+            let registro;
+            if (item == disco) registro = dados.map((json) => json.valorDisco);
+            else if (item == memoria) registro = dados.map((json) => json.valorMemoriaRAM);
+            else if (item == usb) registro = dados.map((json) => json["USB"]);
+            else if (item == cpu) registro = dados.map((json) => json.valorCPU);
+            let data = {
+                labels: labels,
+                datasets: [
+                    {
+                        label: item == usb ? "Quantidade de USBs conectados" : "Percentual de uso",
+                        data: registro,
+                    },
+                ],
+            };
+
+            const grafico = new Chart(item.html, {
+                type: tipoGrafico,
+                data: data,
+                options: {
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: "Horários",
+                            },
+                        },
+                        y: {
+                            beginAtZero: true,
+                            max: item != usb ? 100 : null,
+                            title: {
+                                display: true,
+                                text: item == usb ? "USBs conectadas" : "Percentual de uso"
+                            },
+                            ticks: {
+                                stepSize: item == usb ? 1 : 10,
+                            },
+                        },
+                    },
+                },
+            });
+
+            listaGraficos.push(grafico); // Armazena a instância no array
+        }
+        setInterval(() => atualizar(listaGraficos), 3000);
+    }
+
+    async function atualizar(listaGraficos) {
+        let novoDado = await puxarDadoMaisRecente();
+        let recebeuDadosNovos = false;
+
+        for (grafico of listaGraficos) {
+            let nomeHardware = grafico.canvas.id;
+            let novoLabel = novoDado[0].hora;
+            let dadoHardware = novoDado[0][nomeHardware]
+            //1o disco 2o memoria 3o usb 4o cpu
+
+            console.log(novoDado)
+            if (grafico.data.labels[grafico.data.labels.length - 1] != novoLabel) {
+                grafico.data.datasets[0].data.push(dadoHardware);
+                grafico.data.labels.push(novoLabel);
+                recebeuDadosNovos = true;
+            } else {
+                recebeuDadosNovos = false
+            }
+
+            if (grafico.data.datasets[0].data.length > 7) {
+                grafico.data.datasets[0].data.shift();
+                grafico.data.labels.shift();
+            }
+
+            grafico.update();
+        }
+        if (!recebeuDadosNovos){
+            if(entrouAgora){
+                verificarDados(novoDado, entrouAgora);
+                entrouAgora = false;
+            }else{
+                console.log("Sem dados novos..")
+            }
+        } else {
+            verificarDados(novoDado, entrouAgora);
+        }
+    }
+
+    async function verificarDados(registro, entrouAgora) {
+        let indicadores = await puxarIndicadores();
+        let alertas = {
+            critico: [],
+            ruim: [],
+            medio: []
+        }
+        let data = new Date(registro[0].data);
+        let dataFormatada = `${data.getUTCDate()}/${data.getUTCMonth()}/${data.getUTCFullYear()}`
+        let mensagemAlerta = `${dataFormatada} ${registro[0].hora}<br>`;
+
+        for (let item of Object.keys(indicadores[0])) {
+            console.log(`COMPONENTE: ${item} || REGISTRO: ${registro[0][item]} || INDICADOR: ${indicadores[0][item]}`)
+            if (item != "usb") {
+                if (registro[0][item] >= indicadores[0][item]) { // alerta crítico
+                    alertas.critico.push(`${item.toUpperCase()} || valor: ${registro[0][item]}`)
+                } else if (registro[0][item] >= indicadores[0][item] * 0.9) {  // alerta ruim
+                    alertas.ruim.push(`${item.toUpperCase()} || valor: ${registro[0][item]} `)
+                } else if (registro[0][item] >= indicadores[0][item] * 0.8) {  // alerta medio
+                    alertas.medio.push(`${item.toUpperCase()} || valor: ${registro[0][item]}`)
+                }
+            } else {
+                if (registro[0][item] != indicadores[0][item]) {
+                    alertas.critico.push(`${item.toUpperCase()}: ${registro[0][item]} || valor: ${registro[0][item]}`)
+                }
+            }
+        }
+
+        if (alertas.critico.length > 0) {
+            mensagemAlerta += "<span style='color: var(--Critico)'>Alertas críticos:</span> <br>"
+            for (let item of alertas.critico) mensagemAlerta += `• ${item}<br>`
+        }
+
+        if (alertas.ruim.length > 0) {
+            mensagemAlerta += "<span style='color: var(--Ruim)'>Alertas ruins:</span> <br>"
+            for (let item of alertas.ruim) mensagemAlerta += `• ${item}<br>`
+        }
+
+        if (alertas.medio.length > 0) {
+            mensagemAlerta += "<span style='color: var(--Medio)'>Alertas medios:</span> <br>"
+            for (let item of alertas.medio) mensagemAlerta += `• ${item}<br>`
+        }
+
+        if (entrouAgora) {
+            let foiCritico = (alertas.critico.length > 0 || alertas.ruim.length > 0 || alertas.medio.length > 0)
+            Swal.fire({
+                title: foiCritico ? "Alerta de performance do último registro recebido" : "Isso aí",
+                html: foiCritico ? `<p>${mensagemAlerta}</p>` : "<p style='color: var(--Bom)'>Tudo certo no último registro, continue monitorando</p>",
+                icon: foiCritico ? "error" : "success",
+                toast: true,
+                position: "top-end",
+                timer: 3000
+            })
+        } else {
+            if (alertas.critico.length > 0 || alertas.ruim.length > 0 || alertas.medio.length > 0) {
+                Swal.fire({
+                    title: "Alerta de performance",
+                    html: `<p>${mensagemAlerta}</p>`,
+                    icon: "error",
+                    toast: true,
+                    position: "top-end",
+                    timer: 3000
+                })
+            }
+        }
+    }
+
+    async function mostrarTotalAlertas() {
+        let diasAlertas = await puxarDiasMesComQuantidadeAlertas();
+        let elementoHTML = document.querySelector("#alertasMes")
+        console.log(diasAlertas)
+
+        const labels = diasAlertas.map(json => json.dia)
+        const data = {
+            labels: labels,
+            datasets: [{
+                label: "CPU",
+                data: diasAlertas.map(json => json.qtd_alertas_cpu)
+            },
+            {
+                label: "Disco",
+                data: diasAlertas.map(json => json.qtd_alertas_disco)
+            },
+            {
+                label: "USB",
+                data: diasAlertas.map(json => json.qtd_alertas_usb)
+            },
+            {
+                label: "RAM",
+                data: diasAlertas.map(json => json.qtd_alertas_ram)
+            }
+            ]
+        }
+
+        new Chart(elementoHTML, {
+            type: "line",
+            data: data,
+            options: {
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: "Dias",
+                        },
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: "Quantidade de alertas no dia"
+                        },
+                        ticks: {
+                            stepSize: 1
+                        },
+                    },
+                },
+            },
+        });
+    }
+
+    mostrarTotalAlertas()
+
+</script>

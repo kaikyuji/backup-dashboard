@@ -1,0 +1,89 @@
+*{
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+}
+
+body{
+    height: 100vh;
+    display: flex;
+}
+
+.MenuVertical{
+    position: relative;
+    background-color: #000;
+    display: flex;
+    flex-direction: column;
+    gap: 2em;
+    color: #fff;
+    padding: 2em;
+    width: fit-content;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.MenuVertical .TituloMenu{
+    display: flex;
+    justify-content: center;
+}
+
+.MenuVertical .PaginaAtual{
+    background-image: linear-gradient(to right, var(--RoxoEscuro), var(--RosaClaro));
+}
+
+.MenuVertical .ListaMenu{
+    list-style: none;
+    text-align: center;
+}
+
+.MenuVertical .ListaMenu li{
+    text-align: center;
+}
+
+.MenuVertical .ListaMenu li a{
+    text-align: center;
+    padding: 0 1em;
+    border-radius: 15px;
+}
+
+#Acesso{
+    text-align: center;
+}
+
+.destaque{
+    background: var(--RosaClaro);
+    padding: 2px 10px;
+    border-radius: 15px;
+}
+
+#RoxoBola{
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 250px;
+    height: 250px;
+    bottom: -125px;
+    left: -125px;
+    background-color: var(--RoxoBola);
+    border-radius: 50%;
+}
+
+#AzulBola{
+    position: absolute;
+    bottom: 0;
+    width: 125px;
+    height: 125px;
+    bottom: -62.5px;
+    right: 0;
+    z-index: 999;
+    background-color: var(--AzulBola);
+    border-radius: 50%;
+}
+
+#Logo{
+    width: 100%;
+}
+
+#Logo img{
+    width: 100%;
+}
